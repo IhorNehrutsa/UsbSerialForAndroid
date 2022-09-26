@@ -42,6 +42,7 @@ namespace Hoho.Android.UsbSerial.Driver
              * Configuration Request Types
              */
             private const int REQTYPE_HOST_TO_DEVICE = 0x41;
+            private const int REQTYPE_DEVICE_TO_HOST = 0xc1;
 
             /*
              * Configuration Request Codes
@@ -56,9 +57,7 @@ namespace Hoho.Android.UsbSerial.Driver
             private const int FLUSH_READ_CODE = 0x0a;
             private const int FLUSH_WRITE_CODE = 0x05;
 
-            // https://developer.android.com/reference/android/hardware/usb/UsbConstants#USB_DIR_IN
-            private static int REQTYPE_DEVICE_TO_HOST = UsbConstants.UsbTypeVendor | 0;   // UsbConstants.USB_DIR_IN;
-            private static int GET_MODEM_STATUS_REQUEST = 5;
+            private static int GET_MODEM_STATUS_REQUEST = 0x08; // 0x08 Get modem status. 
             private static int MODEM_STATUS_CTS = 0x10;
             private static int MODEM_STATUS_DSR = 0x20;
             private static int MODEM_STATUS_RI = 0x40;
@@ -312,10 +311,10 @@ namespace Hoho.Android.UsbSerial.Driver
 
             private int GetStatus()
             {
-                byte[] data = new byte[2];
+                byte[] data = new byte[1];
                 int result = mConnection.ControlTransfer((UsbAddressing)REQTYPE_DEVICE_TO_HOST, GET_MODEM_STATUS_REQUEST,
-                        0, mPortNumber + 1, data, data.Length, USB_WRITE_TIMEOUT_MILLIS);
-                if (result != 2)
+                        0, mPortNumber, data, data.Length, USB_WRITE_TIMEOUT_MILLIS);
+                if (result != 1)
                 {
                     throw new IOException("Get modem status failed: result=" + result);
                 }
@@ -339,11 +338,12 @@ namespace Hoho.Android.UsbSerial.Driver
 
             public override bool GetDTR()
             {
-                return true;
+                return (GetStatus() & MCR_DTR) != 0;
             }
 
             public override void SetDTR(bool value)
             {
+                SetConfigSingle(SILABSER_SET_MHS_REQUEST_CODE, value ? MCR_DTR : 0 | CONTROL_WRITE_DTR);
             }
 
             public override bool GetRI()
@@ -353,11 +353,12 @@ namespace Hoho.Android.UsbSerial.Driver
 
             public override bool GetRTS()
             {
-                return true;
+                return (GetStatus() & MCR_RTS) != 0;
             }
 
             public override void SetRTS(bool value)
             {
+                SetConfigSingle(SILABSER_SET_MHS_REQUEST_CODE, value ? MCR_RTS : 0 | CONTROL_WRITE_RTS);
             }
 
             public override Boolean PurgeHwBuffers(Boolean purgeReadBuffers, Boolean purgeWriteBuffers)
