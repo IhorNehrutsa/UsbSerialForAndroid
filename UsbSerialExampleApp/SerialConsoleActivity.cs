@@ -23,6 +23,7 @@ using Android.Widget;
 using Hoho.Android.UsbSerial.Driver;
 using Hoho.Android.UsbSerial.Extensions;
 using Hoho.Android.UsbSerial.Util;
+using Java.Nio;
 
 
 namespace UsbSerialExampleApp
@@ -71,12 +72,66 @@ namespace UsbSerialExampleApp
 
             sleepButton.Click += delegate
             {
-                WriteData(sleepdata);
+                //WriteData(sleepdata);
+
+                string message;
+                
+                message = "\nmPortNumber=";
+                dumpTextView.Append(message);
+                message = port.PortNumber.ToString();
+                dumpTextView.Append(message);
+
+                message = "\nDSR=";
+                dumpTextView.Append(message);
+                message = port.GetDSR().ToString();
+                dumpTextView.Append(message);
+
+                message = "\nRI=";
+                dumpTextView.Append(message);
+                message = port.GetRI().ToString();
+                dumpTextView.Append(message);
+
+                port.SetDTR(false);
+                port.SetRTS(false);
+                
+                message = "\nDTR=";
+                dumpTextView.Append(message);
+                message = port.GetDTR().ToString();
+                dumpTextView.Append(message);
+
+                message = "\nRTS=";
+                dumpTextView.Append(message);
+                message = port.GetRTS().ToString();
+                dumpTextView.Append(message);
             };
 
             wakeButton.Click += delegate
             {
-                WriteData(wakedata);
+                //WriteData(wakedata);
+
+                string message;
+                message = "\nDSR=";
+                dumpTextView.Append(message);
+                message = port.GetDSR().ToString();
+                dumpTextView.Append(message);
+
+                message = "\nRI=";
+                dumpTextView.Append(message);
+                message = port.GetRI().ToString();
+                dumpTextView.Append(message);
+                
+                port.SetDTR(true);
+                port.SetRTS(true);
+                
+                message = "\nDTR=";
+                dumpTextView.Append(message);
+                message = port.GetDTR().ToString();
+                dumpTextView.Append(message);
+
+                message = "\nRTS=";
+                dumpTextView.Append(message);
+                message = port.GetRTS().ToString();
+                dumpTextView.Append(message);
             };
         }
 
@@ -130,7 +185,7 @@ namespace UsbSerialExampleApp
 
             serialIoManager = new SerialInputOutputManager(port)
             {
-                BaudRate = 115200,
+                BaudRate = 9600, //115200,
                 DataBits = 8,
                 StopBits = StopBits.One,
                 Parity = Parity.None,
@@ -138,6 +193,7 @@ namespace UsbSerialExampleApp
             serialIoManager.DataReceived += (sender, e) => {
                 RunOnUiThread(() => {
                     UpdateReceivedData(e.Data);
+                    WriteData(e.Data);
                 });
             };
             serialIoManager.ErrorReceived += (sender, e) => {
@@ -163,16 +219,28 @@ namespace UsbSerialExampleApp
         {
             if (serialIoManager.IsOpen)
             {
+                while (port.GetDSR())
+                    ; // wait AUX
                 port.Write(data, WRITE_WAIT_MILLIS);
             }
         }
 
         void UpdateReceivedData(byte[] data)
         {
-            var message = "Read " + data.Length + " bytes: \n"
-                + HexDump.DumpHexString(data) + "\n\n";
+            //var message = "Read " + data.Length + " bytes: \n"
+            //    + HexDump.DumpHexString(data) + "\n\n";
 
+            // From byte array to string
+            string message = System.Text.Encoding.UTF8.GetString(data, 0, data.Length);
             dumpTextView.Append(message);
+            /*
+            message = "\nDSR()=";
+            dumpTextView.Append(message);
+            message = port.GetDSR().ToString();
+            dumpTextView.Append(message);
+            message = "\n";
+            dumpTextView.Append(message);
+            */
             scrollView.SmoothScrollTo(0, dumpTextView.Bottom);
         }
     }
