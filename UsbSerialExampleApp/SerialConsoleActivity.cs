@@ -7,6 +7,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
 using System.Text;
 
@@ -36,6 +37,8 @@ namespace UsbSerialExampleApp
         public const string EXTRA_TAG = "PortInfo";
         const int READ_WAIT_MILLIS = 200;
         const int WRITE_WAIT_MILLIS = 200;
+
+        const int PACKET_SIZE = 512;
 
         UsbSerialPort port;
 
@@ -214,14 +217,50 @@ namespace UsbSerialExampleApp
                 return;
             }
         }
+        public bool AUX()
+        {
+            return !port.GetDSR();
+        }
 
         void WriteData(byte[] data)
         {
             if (serialIoManager.IsOpen)
             {
-                while (port.GetDSR())
-                    ; // wait AUX
-                port.Write(data, WRITE_WAIT_MILLIS);
+                if (false)
+                {
+                    port.Write(data, WRITE_WAIT_MILLIS);
+                } 
+                else
+                {
+                    int offset = 0;
+                    int writeLength;
+                    int amtWritten;
+                    byte[] writeBuffer = new byte[PACKET_SIZE];
+
+                    while (offset < data.Length)
+                    {
+                        writeLength = Math.Min(data.Length - offset, PACKET_SIZE);
+                        if (offset == 0)
+                        {
+                            writeBuffer = data;
+                        }
+                        else
+                        {
+                            System.Buffer.BlockCopy(data, offset, writeBuffer, 0, writeLength);
+                        }
+
+                        while (!AUX())
+                            ; // wait
+                        amtWritten = port.Write(writeBuffer, WRITE_WAIT_MILLIS);
+                        if (amtWritten > 0)
+                        {
+                            offset += amtWritten;
+
+                            //UpdateReceivedData(writeBuffer);
+                        }
+                    }
+
+                }
             }
         }
 
@@ -234,7 +273,7 @@ namespace UsbSerialExampleApp
             string message = System.Text.Encoding.UTF8.GetString(data, 0, data.Length);
             dumpTextView.Append(message);
             /*
-            message = "\nDSR()=";
+            message = "\nDSR=";
             dumpTextView.Append(message);
             message = port.GetDSR().ToString();
             dumpTextView.Append(message);

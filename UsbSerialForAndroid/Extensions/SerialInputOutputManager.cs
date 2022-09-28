@@ -113,6 +113,11 @@ namespace Hoho.Android.UsbSerial.Extensions
 
         public bool IsOpen => isOpen;
 
+        public bool AUX()
+        {
+            return !port.GetDSR();
+        }
+
         void Step()
         {
             // handle incoming data.
@@ -123,6 +128,18 @@ namespace Hoho.Android.UsbSerial.Extensions
 
                 var data = new byte[len];
                 Array.Copy(buffer, data, len);
+
+                while (!AUX())
+                {
+                    int l = port.Read(buffer, READ_WAIT_MILLIS);
+                    if (l > 0)
+                    {
+                        Array.Resize(ref data, len + l);
+                        Array.Copy(buffer,0, data, len, l);
+                        len += l;
+                    }
+                }
+
                 DataReceived.Raise(this, new SerialDataReceivedArgs(data));
             }
         }

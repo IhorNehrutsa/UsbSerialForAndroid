@@ -217,21 +217,10 @@ namespace Hoho.Android.UsbSerial.Driver
                     int amtWritten;
 
                     lock(mWriteBufferLock) {
-                        byte[] writeBuffer;
 
                         writeLength = Math.Min(src.Length - offset, mWriteBuffer.Length);
-                        if (offset == 0)
-                        {
-                            writeBuffer = src;
-                        }
-                        else
-                        {
-                            // bulkTransfer does not support offsets, make a copy.
-                            Buffer.BlockCopy(src, offset, mWriteBuffer, 0, writeLength);
-                            writeBuffer = mWriteBuffer;
-                        }
 
-                        amtWritten = mConnection.BulkTransfer(mWriteEndpoint, writeBuffer, writeLength,
+                        amtWritten = mConnection.BulkTransfer(mWriteEndpoint, src, offset, writeLength,
                                 timeoutMillis);
                     }
                     if (amtWritten <= 0)
