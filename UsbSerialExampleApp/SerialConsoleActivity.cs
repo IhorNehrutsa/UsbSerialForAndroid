@@ -250,16 +250,17 @@ namespace UsbSerialExampleApp
                         }
 
                         while (!AUX())
-                            ; // wait
+                            ; // wait for ready
                         amtWritten = port.Write(writeBuffer, WRITE_WAIT_MILLIS);
                         if (amtWritten > 0)
                         {
                             offset += amtWritten;
 
                             //UpdateReceivedData(writeBuffer);
+                            while (AUX())
+                                ; // wait for starting
                         }
                     }
-
                 }
             }
         }

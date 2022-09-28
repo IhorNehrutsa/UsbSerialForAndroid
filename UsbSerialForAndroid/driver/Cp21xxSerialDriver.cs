@@ -57,11 +57,11 @@ namespace Hoho.Android.UsbSerial.Driver
             private const int FLUSH_READ_CODE = 0x0a;
             private const int FLUSH_WRITE_CODE = 0x05;
 
-            private static int GET_MODEM_STATUS_REQUEST = 0x08; // 0x08 Get modem status. 
-            private static int MODEM_STATUS_CTS = 0x10;
-            private static int MODEM_STATUS_DSR = 0x20;
-            private static int MODEM_STATUS_RI = 0x40;
-            private static int MODEM_STATUS_CD = 0x80;
+            private const int GET_MODEM_STATUS_REQUEST = 0x08; // 0x08 Get modem status. 
+            private const int MODEM_STATUS_CTS = 0x10;
+            private const int MODEM_STATUS_DSR = 0x20;
+            private const int MODEM_STATUS_RI = 0x40;
+            private const int MODEM_STATUS_CD = 0x80;
             /*
              * SILABSER_IFC_ENABLE_REQUEST_CODE
              */
@@ -86,7 +86,7 @@ namespace Hoho.Android.UsbSerial.Driver
             private UsbEndpoint mReadEndpoint;
             private UsbEndpoint mWriteEndpoint;
 
-            private IUsbSerialDriver Driver;
+            private new IUsbSerialDriver Driver;
             private string TAG => (Driver as Cp21xxSerialDriver)?.TAG;
 
 
