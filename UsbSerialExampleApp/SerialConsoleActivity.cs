@@ -196,7 +196,8 @@ namespace UsbSerialExampleApp
             serialIoManager.DataReceived += (sender, e) => {
                 RunOnUiThread(() => {
                     UpdateReceivedData(e.Data);
-                    WriteData(e.Data);
+                    
+                    //WriteData(e.Data);
                 });
             };
             serialIoManager.ErrorReceived += (sender, e) => {
@@ -251,6 +252,7 @@ namespace UsbSerialExampleApp
 
                         while (!AUX())
                             ; // wait for ready
+                        //System.Threading.Thread.Sleep(5);
                         amtWritten = port.Write(writeBuffer, WRITE_WAIT_MILLIS);
                         if (amtWritten > 0)
                         {
@@ -259,6 +261,7 @@ namespace UsbSerialExampleApp
                             //UpdateReceivedData(writeBuffer);
                             while (AUX())
                                 ; // wait for starting
+                            //System.Threading.Thread.Sleep(5);
                         }
                     }
                 }
