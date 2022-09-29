@@ -129,9 +129,10 @@ namespace Hoho.Android.UsbSerial.Extensions
                 var data = new byte[len];
                 Array.Copy(buffer, data, len);
 
-                while (!AUX())
+                int l = 1;
+                while (!AUX() || (l > 0))
                 {
-                    int l = port.Read(buffer, READ_WAIT_MILLIS);
+                    l = port.Read(buffer, READ_WAIT_MILLIS);
                     if (l > 0)
                     {
                         Array.Resize(ref data, len + l);
