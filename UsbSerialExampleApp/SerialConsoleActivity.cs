@@ -224,8 +224,9 @@ namespace UsbSerialExampleApp
             return !port.GetDSR();
         }
 
-        void WriteData(byte[] data)
+        int WriteData(byte[] data)
         {
+            int offset = 0;
             if (serialIoManager.IsOpen)
             {
                 if (false)
@@ -234,40 +235,35 @@ namespace UsbSerialExampleApp
                 } 
                 else
                 {
-                    int offset = 0;
                     int writeLength;
                     int amtWritten;
-                    byte[] writeBuffer = new byte[PACKET_SIZE];
+                    byte[] writeBuffer;
 
                     while (offset < data.Length)
                     {
                         writeLength = Math.Min(data.Length - offset, PACKET_SIZE);
-                        if (offset == 0)
-                        {
-                            writeBuffer = data;
-                        }
-                        else
-                        {
-                            System.Buffer.BlockCopy(data, offset, writeBuffer, 0, writeLength);
-                        }
+                        writeBuffer = new byte[writeLength];
+                        System.Buffer.BlockCopy(data, offset, writeBuffer, 0, writeLength);
 
                         while (!AUX())
                             ; // wait for ready
-                        //System.Threading.Thread.Sleep(5);
                         amtWritten = port.Write(writeBuffer, WRITE_WAIT_MILLIS);
                         if (amtWritten > 0)
                         {
                             offset += amtWritten;
 
+                            System.Threading.Thread.Sleep(250);
+
                             while (AUX())
                                 ; // wait for starting
-                            //System.Threading.Thread.Sleep(5);
-
-                            //UpdateReceivedData(writeBuffer);
+                            System.Threading.Thread.Sleep(50);
+                            while (!AUX())
+                                ; // wait for ready
                         }
                     }
                 }
             }
+            return offset;
         }
 
         void UpdateReceivedData(byte[] data)
@@ -297,7 +293,8 @@ namespace UsbSerialExampleApp
                 {
                     string strToSend = dumpTextView.Text.Substring(Start, End + strEnd.Length - Start);
                     dumpTextView.Text = strToSend + " len=" + strToSend.Length.ToString();
-                    WriteData(System.Text.UTF8Encoding.UTF8.GetBytes(strToSend));
+                    int written = WriteData(System.Text.UTF8Encoding.UTF8.GetBytes(strToSend));
+                    dumpTextView.Append(" written=" + written.ToString());
                 }
             }
 
