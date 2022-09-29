@@ -282,7 +282,8 @@ namespace UsbSerialExampleApp
             message = "\n";
             dumpTextView.Append(message);
             */
-            
+            scrollView.ScrollTo(0, dumpTextView.Bottom);
+
             String strStart = ">START";
             String strEnd = "END<";
             int Start = dumpTextView.Text.LastIndexOf(strStart);
@@ -293,12 +294,12 @@ namespace UsbSerialExampleApp
                 {
                     string strToSend = dumpTextView.Text.Substring(Start, End + strEnd.Length - Start);
                     dumpTextView.Text = strToSend + " len=" + strToSend.Length.ToString();
+                    scrollView.ScrollTo(0, dumpTextView.Bottom);
                     int written = WriteData(System.Text.UTF8Encoding.UTF8.GetBytes(strToSend));
                     dumpTextView.Append(" written=" + written.ToString());
+                    scrollView.ScrollTo(0, dumpTextView.Bottom);
                 }
             }
-
-            scrollView.SmoothScrollTo(0, dumpTextView.Bottom);
         }
     }
 }
