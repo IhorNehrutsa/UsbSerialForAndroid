@@ -210,15 +210,14 @@ namespace Hoho.Android.UsbSerial.Driver
             public override int Write(byte[] src, int timeoutMillis)
             {
                 int offset = 0;
+                int writeLength;
+                int amtWritten;
 
                 while (offset < src.Length)
                 {
-                    int writeLength;
-                    int amtWritten;
-
                     lock(mWriteBufferLock) {
 
-                        writeLength = Math.Min(src.Length - offset, mWriteBuffer.Length);
+                        writeLength = src.Length - offset;
 
                         amtWritten = mConnection.BulkTransfer(mWriteEndpoint, src, offset, writeLength,
                                 timeoutMillis);
