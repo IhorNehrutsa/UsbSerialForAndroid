@@ -25,6 +25,7 @@ using Hoho.Android.UsbSerial.Driver;
 using Hoho.Android.UsbSerial.Extensions;
 using Hoho.Android.UsbSerial.Util;
 using Java.Nio;
+using Javax.Xml.Transform.Sax;
 
 
 namespace UsbSerialExampleApp
@@ -188,7 +189,7 @@ namespace UsbSerialExampleApp
 
             serialIoManager = new SerialInputOutputManager(port)
             {
-                BaudRate = 9600, //115200,
+                BaudRate = 115200, // 9600, //
                 DataBits = 8,
                 StopBits = StopBits.One,
                 Parity = Parity.None,
@@ -258,10 +259,11 @@ namespace UsbSerialExampleApp
                         {
                             offset += amtWritten;
 
-                            //UpdateReceivedData(writeBuffer);
                             while (AUX())
                                 ; // wait for starting
                             //System.Threading.Thread.Sleep(5);
+
+                            //UpdateReceivedData(writeBuffer);
                         }
                     }
                 }
@@ -284,6 +286,21 @@ namespace UsbSerialExampleApp
             message = "\n";
             dumpTextView.Append(message);
             */
+            
+            String strStart = ">START";
+            String strEnd = "END<";
+            int Start = dumpTextView.Text.LastIndexOf(strStart);
+            if (Start >= 0) 
+            {
+                int End = dumpTextView.Text.IndexOf(strEnd, Start);
+                if ((End >= 0) && (Start < End))
+                {
+                    string strToSend = dumpTextView.Text.Substring(Start, End + strEnd.Length - Start);
+                    dumpTextView.Text = strToSend + " len=" + strToSend.Length.ToString();
+                    WriteData(System.Text.UTF8Encoding.UTF8.GetBytes(strToSend));
+                }
+            }
+
             scrollView.SmoothScrollTo(0, dumpTextView.Bottom);
         }
     }
