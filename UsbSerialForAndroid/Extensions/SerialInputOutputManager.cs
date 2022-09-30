@@ -130,7 +130,9 @@ namespace Hoho.Android.UsbSerial.Extensions
                 Array.Copy(buffer, data, len);
 
                 int l = 1;
-                while (!AUX() || (l > 0))
+                bool aux_prev = false;
+                bool aux = AUX();
+                while (!aux || !aux_prev || (l > 0))
                 {
                     l = port.Read(buffer, READ_WAIT_MILLIS);
                     if (l > 0)
@@ -139,6 +141,8 @@ namespace Hoho.Android.UsbSerial.Extensions
                         Array.Copy(buffer,0, data, len, l);
                         len += l;
                     }
+                    aux_prev = aux;
+                    aux = AUX();
                 }
 
                 DataReceived.Raise(this, new SerialDataReceivedArgs(data));

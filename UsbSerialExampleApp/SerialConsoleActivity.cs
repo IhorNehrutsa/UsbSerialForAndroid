@@ -39,7 +39,7 @@ namespace UsbSerialExampleApp
         const int READ_WAIT_MILLIS = 200;
         const int WRITE_WAIT_MILLIS = 200;
 
-        const int PACKET_SIZE = 512;
+        const int PACKET_SIZE = 58; // 512;
 
         UsbSerialPort port;
 
@@ -250,15 +250,10 @@ namespace UsbSerialExampleApp
                         amtWritten = port.Write(writeBuffer, WRITE_WAIT_MILLIS);
                         if (amtWritten > 0)
                         {
-                            offset += amtWritten;
-
-                            System.Threading.Thread.Sleep(250);
-
                             while (AUX())
                                 ; // wait for starting
-                            System.Threading.Thread.Sleep(50);
-                            while (!AUX())
-                                ; // wait for ready
+                            offset += amtWritten;
+
                         }
                     }
                 }
@@ -293,7 +288,7 @@ namespace UsbSerialExampleApp
                 if ((End >= 0) && (Start < End))
                 {
                     string strToSend = dumpTextView.Text.Substring(Start, End + strEnd.Length - Start);
-                    dumpTextView.Text = strToSend + " len=" + strToSend.Length.ToString();
+                    dumpTextView.Text = strToSend + " read_len=" + strToSend.Length.ToString();
                     scrollView.ScrollTo(0, dumpTextView.Bottom);
                     int written = WriteData(System.Text.UTF8Encoding.UTF8.GetBytes(strToSend));
                     dumpTextView.Append(" written=" + written.ToString());
