@@ -94,10 +94,10 @@ namespace UsbSerialExampleApp
                 dumpTextView.Append(message);
                 message = port.GetRI().ToString();
                 dumpTextView.Append(message);
-
+                /*
                 port.SetDTR(false);
                 port.SetRTS(false);
-                
+                */
                 message = "\nDTR=";
                 dumpTextView.Append(message);
                 message = port.GetDTR().ToString();
@@ -123,10 +123,10 @@ namespace UsbSerialExampleApp
                 dumpTextView.Append(message);
                 message = port.GetRI().ToString();
                 dumpTextView.Append(message);
-                
+                /*
                 port.SetDTR(true);
                 port.SetRTS(true);
-                
+                */
                 message = "\nDTR=";
                 dumpTextView.Append(message);
                 message = port.GetDTR().ToString();
@@ -189,7 +189,7 @@ namespace UsbSerialExampleApp
 
             serialIoManager = new SerialInputOutputManager(port)
             {
-                BaudRate = 115200, // 9600, //
+                BaudRate = 9600, // 115200, // 2400, // 
                 DataBits = 8,
                 StopBits = StopBits.One,
                 Parity = Parity.None,
@@ -224,6 +224,11 @@ namespace UsbSerialExampleApp
             return !port.GetDSR();
         }
 
+        long Millis()
+        {
+            return DateTime.UtcNow.Ticks / TimeSpan.TicksPerMillisecond;
+        }
+
         int WriteData(byte[] data)
         {
             int offset = 0;
@@ -247,13 +252,27 @@ namespace UsbSerialExampleApp
 
                         while (!AUX())
                             ; // wait for ready
+
+                        // alternative 1
+                        // nothing to do
+                        /*
+                        // alternative 2
+                        System.Threading.Thread.Sleep(75);
+                        */
                         amtWritten = port.Write(writeBuffer, WRITE_WAIT_MILLIS);
                         if (amtWritten > 0)
                         {
+                            
+                            // alternative 1
                             while (AUX())
                                 ; // wait for starting
+                            /*
+                            // alternative 2
+                            long t = Millis();
+                            while (AUX() && ((Millis() - t) < 50))
+                                ; // wait for starting
+                            */
                             offset += amtWritten;
-
                         }
                     }
                 }
@@ -288,6 +307,7 @@ namespace UsbSerialExampleApp
                 if ((End >= 0) && (Start < End))
                 {
                     string strToSend = dumpTextView.Text.Substring(Start, End + strEnd.Length - Start);
+                    //string strToSend = dumpTextView.Text[Start..(End + strEnd.Length - Start)];
                     dumpTextView.Text = strToSend + " read_len=" + strToSend.Length.ToString();
                     scrollView.ScrollTo(0, dumpTextView.Bottom);
                     int written = WriteData(System.Text.UTF8Encoding.UTF8.GetBytes(strToSend));
