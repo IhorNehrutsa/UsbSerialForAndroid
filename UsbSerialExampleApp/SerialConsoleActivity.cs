@@ -39,7 +39,7 @@ namespace UsbSerialExampleApp
         const int READ_WAIT_MILLIS = 200;
         const int WRITE_WAIT_MILLIS = 200;
 
-        const int PACKET_SIZE = 58; // 512;
+        const int PACKET_SIZE = 512; // 58; // 
 
         UsbSerialPort port;
 
