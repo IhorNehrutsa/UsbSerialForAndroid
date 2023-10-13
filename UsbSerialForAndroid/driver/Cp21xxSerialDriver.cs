@@ -50,14 +50,18 @@ namespace Hoho.Android.UsbSerial.Driver
             private const int SILABSER_IFC_ENABLE_REQUEST_CODE = 0x00;
             private const int SILABSER_SET_BAUDDIV_REQUEST_CODE = 0x01;
             private const int SILABSER_SET_LINE_CTL_REQUEST_CODE = 0x03;
+            private const int SILABSER_SET_BREAK_REQUEST_CODE = 0x05;
             private const int SILABSER_SET_MHS_REQUEST_CODE = 0x07;
+            private const int SILABSER_GET_MDMSTS_REQUEST_CODE = 0x08;
             private const int SILABSER_SET_BAUDRATE = 0x1E;
             private const int SILABSER_FLUSH_REQUEST_CODE = 0x12;
 
             private const int FLUSH_READ_CODE = 0x0a;
             private const int FLUSH_WRITE_CODE = 0x05;
 
-            private const int GET_MODEM_STATUS_REQUEST = 0x08; // 0x08 Get modem status. 
+            /*
+             * SILABSER_GET_MDMSTS_REQUEST_CODE
+             */
             private const int MODEM_STATUS_CTS = 0x10;
             private const int MODEM_STATUS_DSR = 0x20;
             private const int MODEM_STATUS_RI = 0x40;
@@ -300,7 +304,7 @@ namespace Hoho.Android.UsbSerial.Driver
             private int GetStatus()
             {
                 byte[] data = new byte[1];
-                int result = mConnection.ControlTransfer((UsbAddressing)REQTYPE_DEVICE_TO_HOST, GET_MODEM_STATUS_REQUEST,
+                int result = mConnection.ControlTransfer((UsbAddressing)REQTYPE_DEVICE_TO_HOST, SILABSER_GET_MDMSTS_REQUEST_CODE,
                         0, 0, data, data.Length, USB_WRITE_TIMEOUT_MILLIS);
                 if (result != 1)
                 {
@@ -361,6 +365,11 @@ namespace Hoho.Android.UsbSerial.Driver
 
                 return true;
             }
+
+            public override void setBreak(bool value)
+            {
+                SetConfigSingle(SILABSER_SET_BREAK_REQUEST_CODE, value ? 1 : 0);
+            }
         }
 
         public static Dictionary<int, int[]> GetSupportedDevices()
@@ -370,7 +379,7 @@ namespace Hoho.Android.UsbSerial.Driver
                 {
                     UsbId.VENDOR_SILABS, new int[]
                     {
-                        UsbId.SILABS_CP2102,
+                        UsbId.SILABS_CP2102, // same ID for CP2101, CP2103, CP2104, CP2109
                         UsbId.SILABS_CP2105,
                         UsbId.SILABS_CP2108,
                         UsbId.SILABS_CP2110
