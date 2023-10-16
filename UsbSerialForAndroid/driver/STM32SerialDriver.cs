@@ -28,7 +28,21 @@ namespace Hoho.Android.UsbSerial.Driver
 			mPort = new STM32SerialPort(mDevice, 0, this);
 		}
 
-		public class STM32SerialPort : CommonUsbSerialPort
+        public static Dictionary<int, int[]> GetSupportedDevices()
+        {
+            return new Dictionary<int, int[]>
+                {
+                    {
+                        UsbId.VENDOR_STM, new int[]
+                        {
+                            UsbId.STM32_STLINK,
+                            UsbId.STM32_VCOM
+                        }
+                    }
+                };
+        }
+
+        public class STM32SerialPort : CommonUsbSerialPort
 		{
 			readonly string TAG = nameof(STM32SerialDriver);
 
@@ -42,7 +56,7 @@ namespace Hoho.Android.UsbSerial.Driver
 			bool mRts = false;
 			bool mDtr = false;
 
-			IUsbSerialDriver Driver;
+			private new readonly IUsbSerialDriver Driver;
 
 			const int USB_WRITE_TIMEOUT_MILLIS = 5000;
 
@@ -127,8 +141,15 @@ namespace Hoho.Android.UsbSerial.Driver
 					try
 					{
 						request.Initialize(mConnection, mReadEndpoint);
-						ByteBuffer buf = ByteBuffer.Wrap(dest);
-						if (!request.Queue(buf, dest.Length))
+
+                        // wrap not work here
+                        // byte[] is a primitive C# value type and not a Java.Lang.Object reference type
+                        // when you do ByteBuffer.Wrap (dest), Java has no reference to the actual C# byte[], Java will instead make a copy of the bytes.
+                        // ByteBuffer buf = ByteBuffer.Wrap(dest);
+
+                        ByteBuffer buf = ByteBuffer.AllocateDirect(dest.Length);
+
+                        if (!request.Queue(buf, buf.Limit()))
 							throw new IOException("Error queuing request");
 
 						UsbRequest response = mConnection.RequestWait();
@@ -137,7 +158,13 @@ namespace Hoho.Android.UsbSerial.Driver
 
 						int nread = buf.Position();
 						if (nread > 0)
-							return nread;
+						{
+                            // set back buffer position to 0
+							buf.Rewind();
+							// copy the bytes back
+                            buf.Get(dest, 0, nread);
+                            return nread;
+						}
 
 						return 0;
 					}
@@ -152,7 +179,7 @@ namespace Hoho.Android.UsbSerial.Driver
 				{
 					int readAmt = Math.Min(dest.Length, mReadBuffer.Length);
 					numBytesRead = mConnection.BulkTransfer(mReadEndpoint, mReadBuffer, readAmt, timeoutMillis);
-					if(numBytesRead < 0)
+					if(numBytesRead <= 0)
 					{
 						// This sucks: we get -1 on timeout, not 0 as preferred.
 						// We *should* use UsbRequest, except it has a bug/api oversight
@@ -182,9 +209,10 @@ namespace Hoho.Android.UsbSerial.Driver
 
 					lock(mWriteBufferLock)
 					{
-						byte[] writeBuffer;
+                        writeLength = Math.Min(src.Length - offset, mWriteBuffer.Length);
 
-						writeLength = Math.Min(src.Length - offset, mWriteBuffer.Length);
+                        /*
+						//byte[] writeBuffer;
 						if (offset == 0)
 							writeBuffer = src;
 						else
@@ -194,7 +222,10 @@ namespace Hoho.Android.UsbSerial.Driver
 						}
 
 						amtWritten = mConnection.BulkTransfer(mWriteEndpoint, writeBuffer, writeLength, timeoutMillis);
-					}
+						*/
+                        // Issue#36 The bulkTransfer supports offsets
+                        amtWritten = mConnection.BulkTransfer(mWriteEndpoint, src, offset, writeLength, timeoutMillis);
+                    }
 					if(amtWritten <= 0)
 						throw new IOException($"Error writing {writeLength} bytes at offset {offset} length={src.Length}");
 
@@ -291,20 +322,6 @@ namespace Hoho.Android.UsbSerial.Driver
 			{
 				int value = (mRts ? 0x2 : 0) | (mDtr ? 0x1 : 0);
 				SendAcmControlMessage(SET_CONTROL_LINE_STATE, value, null);
-			}
-
-			public static Dictionary<int, int[]> GetSupportedDevices()
-			{
-				return new Dictionary<int, int[]>
-				{
-					{
-						UsbId.VENDOR_STM, new int[]
-						{
-							UsbId.STM32_STLINK,
-							UsbId.STM32_VCOM
-						}
-					}
-				};
 			}
 		}
 	}

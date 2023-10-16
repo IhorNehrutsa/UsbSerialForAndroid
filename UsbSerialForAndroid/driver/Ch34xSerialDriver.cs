@@ -19,12 +19,13 @@ using Android.Runtime;
 using Android.Views;
 using Android.Widget;
 using Android.Util;
+using Java.Util;
 
 namespace Hoho.Android.UsbSerial.Driver
 {
     public class Ch34xSerialDriver : UsbSerialDriver
     {
-        private readonly string TAG = typeof (ProlificSerialDriver).Name;
+        private readonly string TAG = typeof(ProlificSerialDriver).Name;
 
         public Ch34xSerialDriver(UsbDevice device)
         {
@@ -38,13 +39,27 @@ namespace Hoho.Android.UsbSerial.Driver
 
             private int DEFAULT_BAUD_RATE = 9600;
 
+            private const int SCL_DTR = 0x20;
+            private const int SCL_RTS = 0x40;
+            private const int LCR_ENABLE_RX = 0x80;
+            private const int LCR_ENABLE_TX = 0x40;
+            private const int LCR_STOP_BITS_2 = 0x04;
+            private const int LCR_CS8 = 0x03;
+            private const int LCR_CS7 = 0x02;
+            private const int LCR_CS6 = 0x01;
+            private const int LCR_CS5 = 0x00;
+
+            private const int LCR_MARK_SPACE = 0x20;
+            private const int LCR_PAR_EVEN = 0x10;
+            private const int LCR_ENABLE_PAR = 0x08;
+
             private Boolean dtr = false;
             private Boolean rts = false;
 
             private UsbEndpoint mReadEndpoint;
             private UsbEndpoint mWriteEndpoint;
 
-            private IUsbSerialDriver Driver;
+            private new readonly IUsbSerialDriver Driver;
             private string TAG => (Driver as Ch34xSerialDriver)?.TAG;
 
             public Ch340SerialPort(UsbDevice device, int portNumber, IUsbSerialDriver driver) : base(device, portNumber)
@@ -85,9 +100,9 @@ namespace Hoho.Android.UsbSerial.Driver
                     for (int i = 0; i < dataIface.EndpointCount; i++)
                     {
                         UsbEndpoint ep = dataIface.GetEndpoint(i);
-                        if (ep.Type == (UsbAddressing) UsbSupport.UsbEndpointXferBulk)
+                        if (ep.Type == (UsbAddressing)UsbSupport.UsbEndpointXferBulk)
                         {
-                            if (ep.Direction == (UsbAddressing) UsbSupport.UsbDirIn)
+                            if (ep.Direction == (UsbAddressing)UsbSupport.UsbDirIn)
                             {
                                 mReadEndpoint = ep;
                             }
@@ -202,8 +217,8 @@ namespace Hoho.Android.UsbSerial.Driver
 
             private int ControlOut(int request, int value, int index)
             {
-                int REQTYPE_HOST_TO_DEVICE = 0x41;
-                return mConnection.ControlTransfer((UsbAddressing) REQTYPE_HOST_TO_DEVICE, request,
+                int REQTYPE_HOST_TO_DEVICE = UsbConstants.UsbTypeVendor | UsbSupport.UsbDirOut;
+                return mConnection.ControlTransfer((UsbAddressing)REQTYPE_HOST_TO_DEVICE, request,
                     value, index, null, 0, USB_TIMEOUT_MILLIS);
             }
 
@@ -211,7 +226,7 @@ namespace Hoho.Android.UsbSerial.Driver
             private int ControlIn(int request, int value, int index, byte[] buffer)
             {
                 int REQTYPE_HOST_TO_DEVICE = UsbConstants.UsbTypeVendor | UsbSupport.UsbDirIn;
-                return mConnection.ControlTransfer((UsbAddressing) REQTYPE_HOST_TO_DEVICE, request,
+                return mConnection.ControlTransfer((UsbAddressing)REQTYPE_HOST_TO_DEVICE, request,
                     value, index, buffer, buffer.Length, USB_TIMEOUT_MILLIS);
             }
 
@@ -245,17 +260,17 @@ namespace Hoho.Android.UsbSerial.Driver
                 }
             }
 
-            private void WriteHandshakeByte()
+            private void SetControlLines()
             {
-                if (ControlOut(0xa4, ~((dtr ? 1 << 5 : 0) | (rts ? 1 << 6 : 0)), 0) < 0)
+                if (ControlOut(0xa4, ~((dtr ? SCL_DTR : 0) | (rts ? SCL_RTS : 0)), 0) < 0)
                 {
-                    throw new IOException("Failed to set handshake byte");
+                    throw new IOException("Failed to set control lines");
                 }
             }
 
             private void Initialize()
             {
-                CheckState("init #1", 0x5f, 0, new int[] {-1 /* 0x27, 0x30 */, 0x00});
+                CheckState("init #1", 0x5f, 0, new int[] { -1 /* 0x27, 0x30 */, 0x00 });
 
                 if (ControlOut(0xa1, 0, 0) < 0)
                 {
@@ -264,14 +279,14 @@ namespace Hoho.Android.UsbSerial.Driver
 
                 SetBaudRate(DEFAULT_BAUD_RATE);
 
-                CheckState("init #4", 0x95, 0x2518, new int[] {-1 /* 0x56, c3*/, 0x00});
+                CheckState("init #4", 0x95, 0x2518, new int[] { -1 /* 0x56, c3*/, 0x00 });
 
                 if (ControlOut(0x9a, 0x2518, 0x0050) < 0)
                 {
                     throw new IOException("init failed! #5");
                 }
 
-                CheckState("init #6", 0x95, 0x0706, new int[] {0xff, 0xee});
+                CheckState("init #6", 0x95, 0x0706, new int[] { -1 /*0xf?*/, -1 /*0xec,0xee*/});
 
                 if (ControlOut(0xa1, 0x501f, 0xd90a) < 0)
                 {
@@ -280,30 +295,32 @@ namespace Hoho.Android.UsbSerial.Driver
 
                 SetBaudRate(DEFAULT_BAUD_RATE);
 
-                WriteHandshakeByte();
+                SetControlLines();
 
-                CheckState("init #10", 0x95, 0x0706, new int[] {-1 /* 0x9f, 0xff*/, 0xee});
+                CheckState("init #10", 0x95, 0x0706, new int[] { -1 /* 0x9f, 0xff*/, 0xee });
             }
 
             private void SetBaudRate(int baudRate)
             {
-                int[] baud = new int[]
-                {
-                    2400, 0xd901, 0x0038, 4800, 0x6402,
-                    0x001f, 9600, 0xb202, 0x0013, 19200, 0xd902, 0x000d, 38400,
-                    0x6403, 0x000a, 115200, 0xcc03, 0x0008
-                };
+                int[] baud = new int[] { 50, 0x1680, 0x0024, 75, 0x6480, 0x0018, 100, 0x8B80, 0x0012,
+				110, 0x9580, 0x00B4,  150, 0xB280, 0x000C, 300, 0xD980, 0x0006, 600, 0x6481, 0x0018,
+				900, 0x9881, 0x0010, 1200, 0xB281, 0x000C, 1800, 0xCC81, 0x0008, 2400, 0xD981, 0x0006,
+				3600, 0x3082, 0x0020, 4800, 0x6482, 0x0018, 9600, 0xB282, 0x000C, 14400, 0xCC82, 0x0008,
+				19200, 0xD982, 0x0006, 33600, 0x4D83, 0x00D3, 38400, 0x6483, 0x0018, 56000, 0x9583, 0x0018,
+				57600, 0x9883, 0x0010, 76800, 0xB283, 0x000C, 115200, 0xCC83, 0x0008, 128000, 0xD183, 0x003B,
+				153600, 0xD983, 0x0006, 230400, 0xE683, 0x0004, 460800, 0xF383, 0x0002, 921600, 0xF387, 0x0000,
+				1500000, 0xFC83, 0x0003, 2000000, 0xFD83, 0x0002 };
 
-                for (int i = 0; i < baud.Length/3; i++)
+                for (int i = 0; i < baud.Length / 3; i++)
                 {
-                    if (baud[i*3] == baudRate)
+                    if (baud[i * 3] == baudRate)
                     {
-                        int ret = ControlOut(0x9a, 0x1312, baud[i*3 + 1]);
+                        int ret = ControlOut(0x9a, 0x1312, baud[i * 3 + 1]);
                         if (ret < 0)
                         {
                             throw new IOException("Error setting baud rate. #1");
                         }
-                        ret = ControlOut(0x9a, 0x0f2c, baud[i*3 + 2]);
+                        ret = ControlOut(0x9a, 0x0f2c, baud[i * 3 + 2]);
                         if (ret < 0)
                         {
                             throw new IOException("Error setting baud rate. #1");
@@ -321,7 +338,41 @@ namespace Hoho.Android.UsbSerial.Driver
             {
                 SetBaudRate(baudRate);
 
-                // TODO databit, stopbit and paraty set not implemented
+                int lcr = LCR_ENABLE_RX | LCR_ENABLE_TX;
+
+                lcr |= dataBits switch
+                {
+                    DATABITS_5 => LCR_CS5,
+                    DATABITS_6 => LCR_CS6,
+                    DATABITS_7 => LCR_CS7,
+                    DATABITS_8 => LCR_CS8,
+                    _ => throw new Java.Lang.IllegalArgumentException("Invalid data bits: " + dataBits),
+                };
+
+
+                lcr |= (int)parity switch
+                {
+                    PARITY_NONE => lcr,
+                    PARITY_ODD => LCR_ENABLE_PAR,
+                    PARITY_EVEN => LCR_ENABLE_PAR | LCR_PAR_EVEN,
+                    PARITY_MARK => LCR_ENABLE_PAR | LCR_MARK_SPACE,
+                    PARITY_SPACE => LCR_ENABLE_PAR | LCR_MARK_SPACE | LCR_PAR_EVEN,
+                    _ => throw new Java.Lang.IllegalArgumentException("Invalid parity: " + parity),
+                };
+
+                lcr |= (int)stopBits switch
+                {
+                    STOPBITS_1 => lcr,
+                    STOPBITS_1_5 => throw new Java.Lang.UnsupportedOperationException("Unsupported stop bits: 1.5"),
+                    STOPBITS_2 => LCR_STOP_BITS_2,
+                    _ => throw new Java.Lang.IllegalArgumentException("Invalid stop bits: " + stopBits)
+                };
+
+                int ret = ControlOut(0x9a, 0x2518, lcr);
+                if (ret < 0)
+                {
+                    throw new IOException("Error setting control byte");
+                }
             }
 
             public override bool GetCD()
@@ -347,7 +398,7 @@ namespace Hoho.Android.UsbSerial.Driver
             public override void SetDTR(bool value)
             {
                 dtr = value;
-                WriteHandshakeByte();
+                SetControlLines();
             }
 
             public override bool GetRI()
@@ -363,18 +414,32 @@ namespace Hoho.Android.UsbSerial.Driver
             public override void SetRTS(bool value)
             {
                 rts = value;
-                WriteHandshakeByte();
+                SetControlLines();
             }
 
-            public override bool PurgeHwBuffers(bool flushReadBuffers, bool flushWriteBuffers)
+            /*public EnumSet<ControlLine> getControlLines()
             {
-                return true;
-            }
-        }
 
-        public static Dictionary<int, int[]> GetSupportedDevices()
+                int status = getStatus();
+                EnumSet<ControlLine> set = EnumSet.noneOf(ControlLine.class);
+			    if(rts) set.add(ControlLine.RTS);
+			    if((status & GCL_CTS) == 0) set.add(ControlLine.CTS);
+			    if(dtr) set.add(ControlLine.DTR);
+			    if((status & GCL_DSR) == 0) set.add(ControlLine.DSR);
+			    if((status & GCL_CD) == 0) set.add(ControlLine.CD);
+			    if((status & GCL_RI) == 0) set.add(ControlLine.RI);
+			    return set;
+		    }*/
+
+        public override bool PurgeHwBuffers(bool flushReadBuffers, bool flushWriteBuffers)
         {
-            return new Dictionary<int, int[]>
+            return true;
+        }
+    }
+
+    public static Dictionary<int, int[]> GetSupportedDevices()
+    {
+        return new Dictionary<int, int[]>
             {
                 {
                     UsbId.VENDOR_QINHENG, new int[]
@@ -383,6 +448,6 @@ namespace Hoho.Android.UsbSerial.Driver
                     }
                 }
             };
-        }
     }
+}
 }

@@ -49,6 +49,7 @@ namespace UsbSerialExampleApp
         ScrollView scrollView;
         Button sleepButton;
         Button wakeButton;
+        Button sendHelloButton;
 
         SerialInputOutputManager serialIoManager;
 
@@ -67,6 +68,7 @@ namespace UsbSerialExampleApp
 
             sleepButton = FindViewById<Button>(Resource.Id.sleepButton);
             wakeButton = FindViewById<Button>(Resource.Id.wakeupButton);
+            sendHelloButton = FindViewById<Button>(Resource.Id.helloButton);
 
             // The following arrays contain data that is used for a custom firmware for
             // the Elatec TWN4 RFID reader. This code is included here to show how to
@@ -136,6 +138,14 @@ namespace UsbSerialExampleApp
                 dumpTextView.Append(message);
                 message = port.GetRTS().ToString();
                 dumpTextView.Append(message);
+            };
+
+            // The following shows one way to write ASCII text to the serial port
+            sendHelloButton.Click += delegate
+            {
+                byte[] byteArray = Encoding.ASCII.GetBytes("Hello");
+
+                WriteData(byteArray);
             };
         }
 
